@@ -1,6 +1,5 @@
-//import express from "express";
-const express = require("express");
-import routes from "./../routes";
+import express from "express";
+import routes from "./../routes/index.js";
 
 const app = express();
 

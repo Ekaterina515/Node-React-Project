@@ -1,6 +1,5 @@
-//import express from "express";
-const express = require("express");
-import tasksRoutes from "./tasks.routes";
+import express from "express";
+import tasksRoutes from "./tasks.routes.js";
 
 const router = express.Router();
 
