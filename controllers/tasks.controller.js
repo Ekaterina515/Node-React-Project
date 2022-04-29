@@ -14,17 +14,19 @@ class TasksController {
       return response.status(404).json("Название или описание не найдены.");
     }
 
-    await tasksService.addTask(title, description);
-
-    return response.status(200).json("Новая задача добавлена.");
+    return response.status(200).json(await tasksService.addTask(title, description));
   }
 
   async editTask(request, response) {
-    return response.status(200);
+    const { task } = request.body;
+
+    return response.status(200).json(await tasksService.editTask(task));
   }
 
   async deleteTask(request, response) {
-    return response.status(200);
+    const { id } = request.body;
+
+    return response.status(200).json(await tasksService.deleteTask(id));
   }
 }
 
