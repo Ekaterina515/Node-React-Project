@@ -24,10 +24,11 @@ class UsersController {
     };
 
     const userAgentHeader = request.get("User-Agent");
+    const tokens = await usersService.addUser(user, userAgentHeader);
 
-    return response
-      .status(200)
-      .json(await usersService.addUser(user, userAgentHeader));
+    response.cookie("refreshToken", tokens.refresh);
+
+    return response.status(200).json({accessToken: tokens.access});
   }
 
   async authorization(request, response) {
@@ -41,12 +42,18 @@ class UsersController {
       return response.status(404).json("Логин или пароль введены неверно.");
     }
 
-    const user = await usersService.findUser(login, password);
-    if (!user) {
+    const tokens = await usersService.authUser(
+      login,
+      password,
+      request.get("User-Agent")
+    );
+    if (!refreshToken) {
       return response.status(404).json("Логин или пароль введены неверно.");
     }
 
-    return response.status(200).json(user);
+    response.cookie("refreshToken", tokens.refresh);
+
+    return response.status(200).json({accessToken: tokens.access});
   }
 
   async editUser(request, response) {

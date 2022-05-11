@@ -6,7 +6,7 @@ class TokensService {
   #secretRefresh = process.env.SECRET_JWT_REFRESH;
 
   generateAccess(payload) {
-    return jwt.sign(payload, this.#secretRefresh, { expiresIn: "10min" });
+    return jwt.sign(payload, this.#secretAccess, { expiresIn: "1h" });
   }
 
   generateRefresh(payload) {

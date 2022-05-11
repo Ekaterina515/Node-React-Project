@@ -10,9 +10,10 @@ import md5 from "md5";
  */
 
 class TasksService {
-  async getTasks() {
+  async getTasks(userId) {
     // Получаем массив с идентификаторами наших задач
-    const listOfTasksId = await client.lRange("tasks", 0, -1);
+    const listOfTasksId = await client.lRange(`tasks:${userId}`, 0, -1);
+    console.log(listOfTasksId);
     let tasks = [];
 
     for (let i = 0; i < listOfTasksId.length; i++) {
@@ -27,7 +28,8 @@ class TasksService {
   /**
    * @param {Task} task
    */
-  async addTask(task) {
+  async addTask(userId, task) {
+    console.log(userId);
     // Генерируем ID для пользователя
     const id = this.generateId(task);
     // Преобразовываем объект в массив
@@ -35,7 +37,7 @@ class TasksService {
     // Создаём новую задачу в базе данных
     await client.hSet(`task:${id}`, taskAsArray);
     // Создаём новый ID в списке с идентификаторами
-    await client.rPush(`tasks`, id);
+    await client.rPush(`tasks:${userId}`, id);
 
     return id;
   }
@@ -43,7 +45,7 @@ class TasksService {
   /**
    * @param {Task} task
    */
-  async editTask(task) {
+  async editTask(userId, task) {
     // Генерируем текущий ID
     const currentId = this.generateId(task);
 
@@ -65,13 +67,13 @@ class TasksService {
    * @param {string} oldId
    * @param {string} newId
    */
-  async updateIdInDb(oldId, newId) {
+  async updateIdInDb(userId, oldId, newId) {
     // Переименовываем ID в название хэша
     await client.rename(`task:${oldId}`, `task:${newId}`);
     // Получаем позицию прошлого ID
-    const positionId = await client.lPos("tasks", oldId);
+    const positionId = await client.lPos(`tasks:${userId}`, oldId);
     // Устанавливаем на позицию прошлого ID новый ID
-    await client.lSet("tasks", positionId, newId);
+    await client.lSet(`tasks:${userId}`, positionId, newId);
   }
 
   /**
@@ -84,9 +86,10 @@ class TasksService {
   /**
    * @param {string} id
    */
-  async deleteTask(id) {
+  async deleteTask(userId, id) {
     // Удаляем ID из списка и сохраняем результат в переменную
-    const removingIdFromList = (await client.lRem("tasks", 0, id)) > 0;
+    const removingIdFromList =
+      (await client.lRem(`tasks:${userId}`, 0, id)) > 0;
     // Удаляем хэш из базы данных и сохраняем результат в переменную
     const removingTaskHash = (await client.del(`task:${id}`)) > 0;
 

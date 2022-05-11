@@ -7,7 +7,6 @@ import tokensService from "./tokens.service.js";
  * @typedef {{
  * login: string;
  * password: string;
- * tasksId: string;
  * refreshTokens: string;
  * id: string;
  * }} User
@@ -21,10 +20,12 @@ class UsersService {
     // Генерируем ID для пользователя
     const id = this.generateId(user.login);
     // Хэшируем пароль
+    user.id = id;
     user.password = this.getHashPassword(user.password);
+    const refreshToken = tokensService.generateRefresh({ id: id });
     user.refreshTokens = [
       {
-        token: tokensService.generateRefresh(id),
+        token: refreshToken,
         userAgent: userAgent,
       },
     ];
@@ -35,14 +36,17 @@ class UsersService {
     // Создаём новый ID в списке с идентификаторами
     await client.rPush(`users`, id);
 
-    return id;
+    return {
+      refresh: refreshToken,
+      access: tokensService.generateAccess({ id: id }),
+    };
   }
 
   /**
    * @param {string} login
    * @param {string} password
    */
-  async findUser(login, password) {
+  async authUser(login, password, userAgent) {
     const id = this.generateId(login);
 
     const user = await client.hGetAll(`user:${id}`);
@@ -50,7 +54,33 @@ class UsersService {
       return null;
     }
 
-    return user;
+    user.refreshTokens = JSON.parse(user.refreshTokens);
+    const identicalTokens = user.refreshTokens.filter(
+      (token) => token.userAgent === userAgent
+    );
+
+    if (identicalTokens.length > 0) {
+      return {
+        refresh: identicalTokens[0].token,
+        access: tokensService.generateAccess({ id: id }),
+      };
+    }
+
+    user.refreshTokens.push({
+      token: tokensService.generateRefresh({ id: id }),
+      userAgent: userAgent,
+    });
+
+    await client.hSet(
+      `user:${id}`,
+      "refreshTokens",
+      JSON.stringify(user.refreshTokens)
+    );
+
+    return {
+      refresh: user.refreshTokens[user.refreshTokens.length - 1].token,
+      access: tokensService.generateAccess({ id: id }),
+    };
   }
 
   getHashPassword(password) {
@@ -99,8 +129,11 @@ class UsersService {
 
   getAsArray(object) {
     let objectAsArray = [];
-    Object.entries(object).forEach(([key, value]) => 
-      objectAsArray.push(key, typeof(value) === 'object' ? JSON.stringify(value) : value)
+    Object.entries(object).forEach(([key, value]) =>
+      objectAsArray.push(
+        key,
+        typeof value === "object" ? JSON.stringify(value) : value
+      )
     );
     return objectAsArray;
   }
